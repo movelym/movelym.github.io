@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signaler un contenu illicite – Movelym</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><a class="brand" href="index.html">Movelym</a></header>
+<main>
+<h1>Signaler un contenu illicite</h1>
+<p>Tu penses qu’un contenu précis de Movelym est illégal (profil ou photo de coach, programme partagé, séance entre membres, fiche de salle, pseudo) ? Signale-le ici, <strong>même sans compte</strong>. Tu peux aussi le faire dans l’application : Profil › Compte et sécurité › Signaler un contenu illicite.</p>
+<p>Pour un problème de comportement (harcèlement, absence à une séance…), utilise plutôt « Signaler » directement dans l’application.</p>
+<form id="form" novalidate>
+<label for="type">Type de contenu</label>
+<select id="type" required><option value="">Choisis…</option><option value="COACH_PROFILE" data-hint="Nom affiché du coach, et ce qui pose problème (photo, texte…)">Profil de coach</option><option value="COACH_PROGRAM" data-hint="Nom du programme et du coach, ou le code de partage">Programme partagé</option><option value="BUDDY_SESSION" data-hint="Salle, jour et heure de la séance, pseudo de l’organisateur">Séance « S’entraîner ensemble »</option><option value="GYM" data-hint="Nom et ville de la salle">Fiche de salle</option><option value="USER" data-hint="Le pseudo exact et où tu l’as vu">Pseudo ou profil d’un membre</option><option value="OTHER" data-hint="Décris précisément où se trouve le contenu">Autre</option></select>
+<label for="location">Où se trouve le contenu ?</label>
+<input type="text" id="location" maxlength="500" required>
+<div class="muted" id="hint">Le plus précisément possible.</div>
+<label for="explanation">Pourquoi serait-il illégal ?</label>
+<textarea id="explanation" maxlength="3000" required></textarea>
+<label for="name">Ton nom</label>
+<input type="text" id="name" maxlength="100" autocomplete="name" required>
+<label for="email">Ton adresse e-mail</label>
+<input type="email" id="email" maxlength="254" autocomplete="email" required>
+<div class="muted">Pour l’accusé de réception et la décision.</div>
+<div class="hp" aria-hidden="true"><label for="website">Ne pas remplir</label><input type="text" id="website" tabindex="-1" autocomplete="off"></div>
+<label class="check"><input type="checkbox" id="goodFaith"> Je déclare de bonne foi que les informations et allégations de ce signalement sont exactes et complètes.</label>
+<button type="submit" id="send">Envoyer le signalement</button>
+<div class="msg" id="msg" role="status"></div>
+</form>
+<h2>Ce que nous faisons de ton signalement</h2>
+<p>Une personne de l’équipe l’examine, dans les meilleurs délais. Tu reçois un accusé de réception par e-mail, puis la décision avec tes possibilités de recours. Un signalement abusif peut entraîner une sanction.</p>
+<p class="muted">Données : type et emplacement du contenu, explication, nom, e-mail et confirmation de bonne foi, utilisés seulement pour traiter le signalement. Ils sont conservés 12 mois après la décision ; un signalement non traité au bout de 3 mois est clos et supprimé. Pour limiter les abus, une empreinte chiffrée de ton adresse IP (jamais l’adresse elle-même) est gardée 24 heures. Détails et droits : <a href="confidentialite.html">politique de confidentialité</a>.</p>
+<script>
+const form = document.getElementById('form');
+const msg = document.getElementById('msg');
+const type = document.getElementById('type');
+type.addEventListener('change', () => {
+  const hint = type.selectedOptions[0]?.dataset.hint;
+  document.getElementById('hint').textContent = hint || 'Le plus précisément possible.';
+});
+function show(kind, text) { msg.className = 'msg ' + kind; msg.textContent = text; }
+function check(v) {
+  if (!v.contentType) return 'Choisis le type de contenu.';
+  if (v.location.length < 3) return 'Indique où se trouve le contenu (3 caractères minimum).';
+  if (v.explanation.length < 20) return 'Explique pourquoi ce contenu serait illégal (20 caractères minimum).';
+  if (v.name.length < 2) return 'Indique ton nom.';
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email)) return 'Adresse e-mail invalide.';
+  if (!v.goodFaith) return 'Confirme que ton signalement est fait de bonne foi.';
+  return null;
+}
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const v = {
+    action: 'public',
+    contentType: type.value,
+    location: document.getElementById('location').value.trim(),
+    explanation: document.getElementById('explanation').value.trim(),
+    name: document.getElementById('name').value.trim(),
+    email: document.getElementById('email').value.trim(),
+    goodFaith: document.getElementById('goodFaith').checked,
+    website: document.getElementById('website').value,
+  };
+  const error = check(v);
+  if (error) return show('err', error);
+  const button = document.getElementById('send');
+  button.disabled = true;
+  show('ok', 'Envoi…');
+  try {
+    const res = await fetch('https://ycognjpvgcjdftmkjkur.supabase.co/functions/v1/illegal-content-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(v),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || 'Envoi impossible. Réessaie plus tard ou écris à movelymcontact@gmail.com.');
+    form.reset();
+    show('ok', 'Signalement envoyé. Tu vas recevoir un accusé de réception par e-mail.');
+  } catch (err) {
+    show('err', err.message || 'Envoi impossible. Réessaie plus tard ou écris à movelymcontact@gmail.com.');
+  } finally {
+    button.disabled = false;
+  }
+});
+</script>
+</main>
+<footer>
+<a href="conditions.html">Conditions d’utilisation</a> ·
+<a href="confidentialite.html">Confidentialité</a> ·
+<a href="conditions-coach.html">Conditions coach</a> ·
+<a href="signaler.html">Signaler un contenu</a> ·
+<a href="supprimer-compte.html">Supprimer mon compte</a>
+<br>Contact : <a href="mailto:movelymcontact@gmail.com">movelymcontact@gmail.com</a>
+</footer>
+</body>
+</html>
